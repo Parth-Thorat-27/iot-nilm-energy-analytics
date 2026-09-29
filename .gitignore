@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+
+backend/data/alert_state.json
+
+firmware/.pio/
+firmware/include/secrets.h
+
+exports/
+backend/data/*.joblib

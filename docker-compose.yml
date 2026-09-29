@@ -1,0 +1,104 @@
+name: iota
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: iota-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: iota-influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+      DOCKER_INFLUXDB_INIT_RETENTION: ${INFLUXDB_RETENTION}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana-oss:11.2.0
+    container_name: iota-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Read by the provisioned datasource
+      INFLUXDB_ORG: ${INFLUXDB_ORG}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  # ---- Python services (image built from backend/Dockerfile) -------------------
+  bridge:
+    <<: &backend
+      build: ./backend
+      image: iota-backend
+      restart: unless-stopped
+      init: true                      # forward SIGTERM so `docker compose stop` is instant
+      env_file: .env
+      environment:
+        MQTT_HOST: mosquitto          # container names instead of localhost
+        INFLUXDB_URL: http://influxdb:8086
+      volumes:
+        - ./backend:/app              # live code/config (rooms.json, appliances.json) + data/ (model, signatures)
+      depends_on:
+        mosquitto:
+          condition: service_started
+        influxdb:
+          condition: service_healthy
+    container_name: iota-bridge
+    command: python bridge.py
+
+  nilm:
+    <<: *backend
+    container_name: iota-nilm
+    command: python nilm.py run
+
+  anomaly:
+    <<: *backend
+    container_name: iota-anomaly
+    command: python anomaly.py
+
+  # Simulated room for demos/testing. Not started by default:
+  #   docker compose --profile demo up -d simulator
+  simulator:
+    <<: *backend
+    container_name: iota-simulator
+    command: python simulate.py
+    profiles: [demo]
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:

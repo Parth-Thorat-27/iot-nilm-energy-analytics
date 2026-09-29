@@ -1,0 +1,54 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start project",
+      "detail": "Mosquitto, InfluxDB, Grafana, bridge, NILM engine, anomaly detector (all in Docker)",
+      "type": "shell",
+      "command": "docker compose up -d --build; docker compose ps",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start demo simulator",
+      "detail": "Live simulated room (hostel/sim-room) for testing without hardware",
+      "type": "shell",
+      "command": "docker compose --profile demo up -d simulator",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop demo simulator",
+      "type": "shell",
+      "command": "docker compose --profile demo stop simulator",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Show live logs",
+      "type": "shell",
+      "command": "docker compose logs -f --tail 20 bridge nilm anomaly",
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Export data (room, last 24 h)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe export.py --room ${input:room} --hours ${input:hours}",
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop project",
+      "type": "shell",
+      "command": "docker compose --profile demo stop",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    { "id": "room", "type": "promptString", "description": "Room to export", "default": "room101" },
+    { "id": "hours", "type": "promptString", "description": "Hours of data", "default": "24" }
+  ]
+}

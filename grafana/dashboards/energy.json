@@ -1,0 +1,1256 @@
+{
+ "uid": "iota-energy",
+ "title": "NILM Energy Analytics",
+ "tags": [
+  "nilm",
+  "energy"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 39,
+ "version": 2,
+ "refresh": "30s",
+ "time": {
+  "from": "now-24h",
+  "to": "now"
+ },
+ "templating": {
+  "list": [
+   {
+    "name": "room",
+    "label": "Room",
+    "type": "query",
+    "datasource": {
+     "type": "influxdb",
+     "uid": "influxdb-iota"
+    },
+    "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: v.defaultBucket, tag: \"room\", predicate: (r) => r._measurement == \"power\", start: -30d)",
+    "refresh": 2,
+    "includeAll": false,
+    "multi": false
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "stat",
+   "title": "Current (RMS)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "amp",
+     "decimals": 2,
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "blue"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 5
+       },
+       {
+        "color": "red",
+        "value": 8
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"current_a\" and r.room == \"${room}\")\n  |> group()\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center"
+   }
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Apparent power",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "voltamp",
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "blue"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1150
+       },
+       {
+        "color": "red",
+        "value": 1840
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"apparent_va\" and r.room == \"${room}\")\n  |> group()\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center"
+   }
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Energy today",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "decimals": 2,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "blue"
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "import \"date\"\nimport \"timezone\"\noption location = timezone.location(name: \"Asia/Kolkata\")\nfrom(bucket: v.defaultBucket)\n  |> range(start: date.truncate(t: now(), unit: 1d))\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"apparent_va\" and r.room == \"${room}\")\n  |> group()\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with _value: r._value / 1000.0 }))"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   }
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Standby baseline",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "purple"
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"appliance_power\" and r.appliance == \"baseline\" and r.room == \"${room}\")\n  |> group()\n  |> last()"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   }
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "Efficiency factor (24 h)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "blue"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 70
+       },
+       {
+        "color": "green",
+        "value": 85
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"nilm_summary\" and r._field == \"efficiency_pct\" and r.room == \"${room}\")\n  |> group()\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "description": "Share of energy that went to active (switched) loads rather than the always-on standby baseline."
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "Edge node",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "fieldConfig": {
+    "defaults": {
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "OFFLINE",
+         "color": "red"
+        },
+        "1": {
+         "text": "ONLINE",
+         "color": "green"
+        }
+       }
+      }
+     ],
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"node_status\" and r._field == \"online\" and r.room == \"${room}\")\n  |> group()\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value"
+   }
+  },
+  {
+   "id": 7,
+   "type": "timeseries",
+   "title": "Aggregate load vs. standby baseline",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 24,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "voltamp",
+     "custom": {
+      "fillOpacity": 12,
+      "showPoints": "never",
+      "lineWidth": 1
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "baseline"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#a0a0a0"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "agg = from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"apparent_va\" and r.room == \"${room}\")\n  |> group()\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> set(key: \"_field\", value: \"aggregate\")\nbase = from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"appliance_power\" and r.appliance == \"baseline\" and r.room == \"${room}\")\n  |> group()\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> set(key: \"_field\", value: \"baseline\")\nunion(tables: [agg, base])\n  |> group(columns: [\"_field\"])\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   }
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Reconstructed appliance power (NILM)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 12,
+    "w": 16,
+    "h": 10
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "custom": {
+      "fillOpacity": 70,
+      "stacking": {
+       "mode": "normal"
+      },
+      "showPoints": "never",
+      "lineWidth": 0,
+      "lineInterpolation": "stepAfter"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "baseline"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#6e7079"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "unclassified"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#b0b3b8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"appliance_power\" and r._field == \"power_w\" and r.room == \"${room}\")\n  |> group(columns: [\"appliance\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"appliance\"])"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "mean",
+      "max"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "description": "Stacked per-appliance power from nilm.py. Baseline = always-on standby, unclassified = residual not explained by any detected appliance."
+  },
+  {
+   "id": 9,
+   "type": "table",
+   "title": "Appliances ON now",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 12,
+    "w": 8,
+    "h": 10
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "power_w"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "watt"
+       },
+       {
+        "id": "displayName",
+        "value": "Power"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "since_min"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "m"
+       },
+       {
+        "id": "displayName",
+        "value": "On for"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "appliance"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Appliance"
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"appliance_state\" and r.room == \"${room}\")\n  |> last()\n  |> pivot(rowKey: [\"_time\", \"appliance\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> keep(columns: [\"appliance\", \"power_w\", \"since_min\"])\n  |> sort(columns: [\"power_w\"], desc: true)"
+    }
+   ],
+   "options": {
+    "showHeader": true
+   }
+  },
+  {
+   "id": 10,
+   "type": "bargauge",
+   "title": "Energy by appliance (time range)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 22,
+    "w": 8,
+    "h": 10
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "decimals": 2,
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "baseline"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#6e7079"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "unclassified"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#b0b3b8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"appliance_power\" and r._field == \"power_w\" and r.room == \"${room}\")\n  |> group(columns: [\"appliance\"])\n  |> integral(unit: 1h)\n  |> map(fn: (r) => ({ r with _value: r._value / 1000.0 }))\n  |> keep(columns: [\"_value\", \"appliance\"])"
+    }
+   ],
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showUnfilled": true
+   },
+   "description": "E_total = sum of appliance energy + baseline + unclassified"
+  },
+  {
+   "id": 11,
+   "type": "timeseries",
+   "title": "Hourly energy by appliance",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 22,
+    "w": 16,
+    "h": 10
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watth",
+     "custom": {
+      "drawStyle": "bars",
+      "fillOpacity": 85,
+      "stacking": {
+       "mode": "normal"
+      },
+      "lineWidth": 0
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "baseline"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#6e7079"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "unclassified"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#b0b3b8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "import \"timezone\"\noption location = timezone.location(name: \"Asia/Kolkata\")\nfrom(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"appliance_power\" and r._field == \"power_w\" and r.room == \"${room}\")\n  |> group(columns: [\"appliance\"])\n  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"appliance\"])"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "description": "Mean W over each hour = Wh in that hour."
+  },
+  {
+   "id": 12,
+   "type": "timeseries",
+   "title": "Daily energy by appliance (7 days)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 16,
+    "h": 9
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth",
+     "custom": {
+      "drawStyle": "bars",
+      "fillOpacity": 85,
+      "stacking": {
+       "mode": "normal"
+      },
+      "lineWidth": 0
+     },
+     "decimals": 2
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "baseline"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#6e7079"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "unclassified"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#b0b3b8"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "import \"timezone\"\noption location = timezone.location(name: \"Asia/Kolkata\")\nfrom(bucket: v.defaultBucket)\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"appliance_power\" and r._field == \"power_w\" and r.room == \"${room}\")\n  |> group(columns: [\"appliance\"])\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)\n  |> map(fn: (r) => ({ r with _value: r._value / 60000.0 }))\n  |> keep(columns: [\"_time\", \"_value\", \"appliance\"])"
+    }
+   ],
+   "timeFrom": "7d",
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "id": 13,
+   "type": "stat",
+   "title": "Wastage footprint (last 24 h)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 32,
+    "w": 8,
+    "h": 9
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watth",
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "orange"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "total_wh"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Total"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "standby_wh"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Standby (vampire)"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "unoccupied_wh"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "While unoccupied"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "unclassified_wh"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "Unclassified"
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"nilm_summary\" and r.room == \"${room}\")\n  |> filter(fn: (r) => r._field == \"total_wh\" or r._field == \"standby_wh\" or r._field == \"unoccupied_wh\" or r._field == \"unclassified_wh\")\n  |> last()\n  |> group()\n  |> keep(columns: [\"_field\", \"_value\"])\n  |> pivot(rowKey: [], columnKey: [\"_field\"], valueColumn: \"_value\")"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "none",
+    "textMode": "value_and_name",
+    "orientation": "vertical"
+   }
+  },
+  {
+   "id": 14,
+   "type": "table",
+   "title": "Wastage alerts",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 41,
+    "w": 24,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "active"
+      },
+      "properties": [
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "0": {
+            "text": "ended",
+            "color": "text"
+           },
+           "1": {
+            "text": "ACTIVE",
+            "color": "red"
+           }
+          }
+         }
+        ]
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 90
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "duration_min"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "m"
+       },
+       {
+        "id": "displayName",
+        "value": "duration"
+       },
+       {
+        "id": "custom.width",
+        "value": 100
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "rule"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 170
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "_time"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "started"
+       },
+       {
+        "id": "custom.width",
+        "value": 170
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"alert\" and r.room == \"${room}\")\n  |> pivot(rowKey: [\"_time\", \"rule\", \"appliance\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> keep(columns: [\"_time\", \"rule\", \"message\", \"duration_min\", \"active\"])\n  |> sort(columns: [\"_time\"], desc: true)"
+    }
+   ],
+   "options": {
+    "showHeader": true
+   }
+  },
+  {
+   "id": 15,
+   "type": "table",
+   "title": "Detected switching events",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 49,
+    "w": 24,
+    "h": 9
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "delta_w"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "watt"
+       },
+       {
+        "id": "displayName",
+        "value": "ΔP"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "rise_s"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "peak_a"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "amp"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "confidence"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "percentunit"
+       }
+      ]
+     }
+    ]
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"nilm_event\" and r.room == \"${room}\")\n  |> pivot(rowKey: [\"_time\", \"appliance\", \"action\", \"method\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> keep(columns: [\"_time\", \"action\", \"appliance\", \"delta_w\", \"rise_s\", \"inrush_ratio\", \"peak_a\", \"confidence\", \"method\"])\n  |> sort(columns: [\"_time\"], desc: true)"
+    }
+   ],
+   "options": {
+    "showHeader": true
+   }
+  },
+  {
+   "id": 16,
+   "type": "timeseries",
+   "title": "Anomaly score (IsolationForest)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 58,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "points",
+      "pointSize": 5,
+      "thresholdsStyle": {
+       "mode": "line"
+      }
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 0
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"anomaly\" and r._field == \"score\" and r.room == \"${room}\")\n  |> keep(columns: [\"_time\", \"_value\"])"
+    }
+   ],
+   "description": "backend/anomaly.py. Above the red line = statistically unusual minute."
+  },
+  {
+   "id": 17,
+   "type": "timeseries",
+   "title": "Wi-Fi signal (RSSI)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "influxdb-iota"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 58,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "dBm",
+     "custom": {
+      "showPoints": "never"
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "influxdb-iota"
+     },
+     "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"rssi\" and r.room == \"${room}\")\n  |> group()\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+    }
+   ]
+  }
+ ]
+}

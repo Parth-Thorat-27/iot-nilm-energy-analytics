@@ -1,0 +1,9 @@
+{
+  "_comment": "Appliance signature catalog. Used to classify step events when no trained model exists (or it is unsure), to name model classes, and for the runaway rule. power_w = steady-state step size; inrush_ratio = peak current / steady peak at switch-on; rise_s = seconds from the first detectable change to a steady level (at 1-2 s telemetry).",
+  "soldering_iron": { "power_w": 60,   "tolerance": 0.35, "inrush_ratio": 1.0, "rise_s": 0, "max_runtime_h": 2 },
+  "ceiling_fan":    { "power_w": 75,   "tolerance": 0.35, "inrush_ratio": 1.5, "rise_s": 3, "max_runtime_h": 12 },
+  "laptop_charger": { "power_w": 45,   "tolerance": 0.4,  "inrush_ratio": 2.5, "rise_s": 0, "max_runtime_h": 10 },
+  "pc_workstation": { "power_w": 200,  "tolerance": 0.5,  "inrush_ratio": 3.5, "rise_s": 2, "max_runtime_h": 14 },
+  "room_heater":    { "power_w": 1500, "tolerance": 0.3,  "inrush_ratio": 1.1, "rise_s": 0, "max_runtime_h": 3 },
+  "kettle":         { "power_w": 1800, "tolerance": 0.25, "inrush_ratio": 1.0, "rise_s": 0, "max_runtime_h": 0.25 }
+}

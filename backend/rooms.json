@@ -1,0 +1,29 @@
+{
+  "_comment": "Per-room metadata. The bridge adds site/room/phase tags; nilm.py uses the schedule + thresholds. Times are local (TZ in .env). Rooms not listed use _default.",
+  "_default": {
+    "phase": "unknown",
+    "night": ["23:00", "06:00"],
+    "unoccupied": [["23:00", "06:00"]],
+    "night_active_w": 150,
+    "night_active_min": 5,
+    "vampire_w": 25
+  },
+  "room101": {
+    "label": "Hostel Room 101",
+    "phase": "R",
+    "night": ["23:00", "06:00"],
+    "unoccupied": [["23:00", "06:00"], ["09:30", "13:00"]],
+    "night_active_w": 150,
+    "night_active_min": 5,
+    "vampire_w": 25
+  },
+  "sim-room": {
+    "label": "Simulated room",
+    "phase": "Y",
+    "night": ["23:00", "06:00"],
+    "unoccupied": [["23:00", "06:00"]],
+    "night_active_w": 150,
+    "night_active_min": 5,
+    "vampire_w": 25
+  }
+}
